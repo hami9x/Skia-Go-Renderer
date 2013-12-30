@@ -1,5 +1,5 @@
 vars = {                                                                           
-	"root_dir": "src",   
+	"root_dir": ".",   
   	"googlecode_url": "http://%s.googlecode.com/svn",
 	"skia_revision": "12838",                                                                                           
 }                                                                                  
