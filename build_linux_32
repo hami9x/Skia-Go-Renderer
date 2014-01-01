@@ -1,4 +1,12 @@
+#!/bin/bash
 DEPLOYPATH="src/out/Debug"
-./src/build/gyp_using_skia.py -Dskia_arch_width=32
-ninja -C $DEPLOYPATH
-sudo cp $DEPLOYPATH/lib/* /usr/lib/
+if [[ "$1" == "install" ]]
+  then
+	INCLUDEPATH="/usr/include/gosui"
+	cp $DEPLOYPATH/lib/* /usr/lib/
+	mkdir -p $INCLUDEPATH
+	cp src/app/*.h $INCLUDEPATH/
+else
+	./src/build/gyp_using_skia.py -Dskia_arch_width=32
+	ninja -C $DEPLOYPATH
+fi
