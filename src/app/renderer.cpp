@@ -6,12 +6,14 @@
 #include "SkPaint.h"
 #include "SkRect.h"
 #include "SkRRect.h"
+#include "SkRegion.h"
 #include "gl/GrGLConfig.h"
 #include "gl/GrGLFunctions.h"
 #include "gl/GrGLExtensions.h"
 #include "gl/GrGLInterface.h"
 #include "SkGpuDevice.h"
 #include "SkGraphics.h"
+#include "SkPoint.h"
 
 #include <iostream>
 
@@ -19,16 +21,27 @@ class Renderer {
 public:
     SkCanvas * canvas;
     GrContext * context;
+    GrRenderTarget * renderTarget;
     int a;
 
     Renderer(int width, int height) {
+        canvas = NULL; context = NULL; renderTarget = NULL;
         //Initialize
-        a = 9;
         SkGraphics::Init();
         const GrGLInterface* interface = GrGLCreateNativeInterface();
         SkASSERT(NULL != interface);
         context = GrContext::Create(kOpenGL_GrBackend, (GrBackendContext)(interface));
         SkASSERT(NULL != context);
+
+        updateRenderTarget(width, height);
+
+        // if (NULL != context && NULL != renderTarget) {
+        //     SkAutoTUnref<SkBaseDevice> device(new SkGpuDevice(context, renderTarget));
+        //     canvas = new SkCanvas(device);
+        // }
+    }
+
+    void updateRenderTarget(int width, int height) {
         GrBackendRenderTargetDesc desc;
         desc.fWidth = SkScalarRoundToInt(width);
         desc.fHeight = SkScalarRoundToInt(height);
@@ -41,13 +54,20 @@ public:
         glGetIntegerv(GL_FRAMEBUFFER_BINDING, &buffer);
         desc.fRenderTargetHandle = buffer;
 
-        GrRenderTarget* renderTarget = context->wrapBackendRenderTarget(desc);
-
+        if (renderTarget != NULL) {
+            SkSafeUnref(renderTarget);
+        }
+        renderTarget = context->wrapBackendRenderTarget(desc);
         context->setRenderTarget(renderTarget);
         if (NULL != context && NULL != renderTarget) {
             SkAutoTUnref<SkBaseDevice> device(new SkGpuDevice(context, renderTarget));
+            if (canvas != NULL) SkSafeUnref(canvas);
             canvas = new SkCanvas(device);
         }
+    }
+
+    void updateCanvas(int width, int height) {
+        // canvas = new SkCanvas(canvas->createCompatibleDevice(SkBitmap::kARGB_8888_Config, width, height, false));
     }
 
     static Renderer * fromPtr(SkiaRenderer r) {
@@ -64,8 +84,8 @@ public:
     }
 
     ~Renderer() {
-        delete canvas;
-        delete context;
+        SkSafeUnref(canvas);
+        SkSafeUnref(context);
     }
 };
 
@@ -84,27 +104,37 @@ void Die(SkiaRenderer _r) {
 }
 
 SkRect toSkRect(Rect rect) {
-    return SkRect::MakeXYWH(rect.x, rect.y, rect.w, rect.h);
+    return SkRect::MakeXYWH(rect.min.x, rect.min.y, rect.max.x-rect.min.x, rect.max.y-rect.min.y);
 }
 
 Color ColorFromRGBA(int r, int g, int b, int a) {
     return SkColorSetARGB(a, r, g, b);
 }
 
-void DrawRect(SkiaRenderer _r, Paint _paint, Rect _rect, int radii = 0) {
+void DrawRect(SkiaRenderer _r, Paint _paint, Rect _rect, Point * raddis) {
     Renderer * r = Renderer::fromPtr(_r);
-
+    SkVector skRads[4];
+    for (int i=0; i<4; ++i) {
+        skRads[i] = SkPoint::Make(raddis[i].x, raddis[i].y);
+    }
     SkRect rect = toSkRect(_rect);
     SkPaint paint;
     paint.setAntiAlias(true);
     paint.setColor(_paint.fillColor);
     paint.setStyle(SkPaint::kFill_Style);
     SkRRect rr;
-    rr.setRectXY(rect, radii, radii);
+    rr.setRectRadii(rect, skRads);
     r->canvas->drawRRect(rr, paint);
     paint.setColor(_paint.strokeColor);
+    paint.setStrokeWidth(_paint.strokeWidth);
     paint.setStyle(SkPaint::kStroke_Style);
     r->canvas->drawRRect(rr, paint);
+}
+
+void ClipRect(SkiaRenderer _r, Rect _rect) {
+    Renderer * r = Renderer::fromPtr(_r);
+    SkRect rect = toSkRect(_rect);
+    r->canvas->clipRect(rect, SkRegion::kIntersect_Op, true);
 }
 
 void Clear(SkiaRenderer _r) {
@@ -120,4 +150,10 @@ int Save(SkiaRenderer _r) {
 void Restore(SkiaRenderer _r, int count=1) {
     Renderer * r = Renderer::fromPtr(_r);
     r->canvas->restoreToCount(count);
+}
+
+void UpdateWindowSize(SkiaRenderer _r, int width, int height) {
+    Renderer * r = Renderer::fromPtr(_r);
+    r->updateRenderTarget(width, height);
+    r->updateCanvas(width, height);
 }

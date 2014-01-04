@@ -5,12 +5,14 @@ extern "C" {
 #endif
     typedef void* SkiaRenderer;
     typedef uint32_t Color;
-
-    typedef struct Rect {
+    typedef struct Point {
         int x;
         int y;
-        int w;
-        int h;
+    } Point;
+
+    typedef struct Rect {
+        Point min;
+        Point max;
     } Rect;
 
     typedef struct Paint {
@@ -23,10 +25,11 @@ extern "C" {
     void Flush(SkiaRenderer);
     void Die(SkiaRenderer);
     int Save(SkiaRenderer);
+    void UpdateWindowSize(SkiaRenderer, int, int);
     void Clear(SkiaRenderer);
     void Restore(SkiaRenderer, int);
-
-    void DrawRect(SkiaRenderer, Paint, Rect, int);
+    void ClipRect(SkiaRenderer, Rect);
+    void DrawRect(SkiaRenderer, Paint, Rect, Point *);
     Color ColorFromRGBA(int, int, int, int);
 #ifdef __cplusplus
 }
