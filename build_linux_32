@@ -1,9 +1,10 @@
 #!/bin/bash
+INSTALLPATH="/usr/lib/"
 DEPLOYPATH="src/out/Debug"
 if [[ "$1" == "install" ]]
   then
 	INCLUDEPATH="/usr/include/gosui"
-	cp $DEPLOYPATH/lib/* /usr/lib/
+	cp $DEPLOYPATH/lib/* $INSTALLPATH
 	mkdir -p $INCLUDEPATH
 	cp src/app/*.h $INCLUDEPATH/
 else
